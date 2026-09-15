@@ -1,0 +1,8 @@
+{
+  "name": "open-voice-agent-web",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "livekit-server-sdk": "^2.6.0"
+  }
+}
