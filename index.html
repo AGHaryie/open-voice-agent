@@ -65,7 +65,7 @@
 
       statusDiv.innerText = "Requesting token...";
       try {
-        const res = await fetch("/token");
+        const res = await fetch("/api/token");
         if (!res.ok) throw new Error("Token request failed (" + res.status + ")");
         const { token, url } = await res.json();
 
