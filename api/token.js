@@ -16,7 +16,7 @@ function sendResponse(res, statusCode, data) {
   return res.end(JSON.stringify(data));
 }
 
-module.exports = async (req, res) => {
+async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
 
@@ -29,10 +29,6 @@ module.exports = async (req, res) => {
   const apiKey = process.env.LIVEKIT_API_KEY || "APIog2ZEydoX7Aw";
   const apiSecret = process.env.LIVEKIT_API_SECRET || "9U3CmxVTSAHeogAlFUtNNBVYfyaf8N8SiTKrfEuRNePE";
   const livekitUrl = process.env.LIVEKIT_URL || "wss://open-voice-agent-mbfh49s1.livekit.cloud";
-
-  if (!apiKey || !apiSecret) {
-    return sendResponse(res, 500, { error: 'LIVEKIT_API_KEY or LIVEKIT_API_SECRET missing.' });
-  }
 
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'HS256', typ: 'JWT' };
@@ -68,4 +64,7 @@ module.exports = async (req, res) => {
     token,
     url: livekitUrl
   });
-};
+}
+
+module.exports = handler;
+module.exports.default = handler;
