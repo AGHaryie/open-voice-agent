@@ -1,6 +1,5 @@
-serve.py
-agent.py
-tts_server.py
+*.py
 requirements.txt
 venv/
 __pycache__/
+.env
