@@ -1,5 +1,8 @@
 *.py
-requirements.txt
+requirements*.txt
+Pipfile*
+poetry.lock
+pyproject.toml
 venv/
+.venv/
 __pycache__/
-.env
