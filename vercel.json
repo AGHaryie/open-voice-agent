@@ -1,8 +1,7 @@
 {
-  "buildCommand": null,
-  "outputDirectory": null,
-  "framework": null,
-  "rewrites": [
-    { "source": "/api/token", "destination": "/api/token.js" }
-  ]
+  "functions": {
+    "api/token.js": {
+      "runtime": "nodejs20.x"
+    }
+  }
 }
