@@ -1,4 +1,12 @@
-const { AccessToken } = require('livekit-server-sdk');
+const crypto = require('crypto');
+
+function base64UrlEncode(str) {
+  return Buffer.from(str)
+    .toString('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,39 +21,41 @@ module.exports = async (req, res) => {
   const livekitUrl = process.env.LIVEKIT_URL;
 
   if (!apiKey || !apiSecret) {
-    console.error('Missing LiveKit environment variables:', {
-      hasKey: !!apiKey,
-      hasSecret: !!apiSecret
-    });
-    return res.status(500).json({ 
-      error: 'LiveKit credentials missing on Vercel environment variables' 
-    });
+    return res.status(500).json({ error: 'LIVEKIT_API_KEY or LIVEKIT_API_SECRET missing in Vercel settings.' });
   }
 
-  try {
-    const roomName = 'my-room';
-    const participantIdentity = `user-${Math.random().toString(36).substring(7)}`;
-
-    const at = new AccessToken(apiKey, apiSecret, {
-      identity: participantIdentity,
-      name: 'Web User',
-    });
-
-    at.addGrant({
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'HS256', typ: 'JWT' };
+  
+  const payload = {
+    sub: `user-${Math.random().toString(36).substring(7)}`,
+    iss: apiKey,
+    nbf: now - 5,
+    exp: now + 3600,
+    video: {
+      room: 'my-room',
       roomJoin: true,
-      room: roomName,
       canPublish: true,
-      canSubscribe: true,
-    });
+      canSubscribe: true
+    }
+  };
 
-    const token = await at.toJwt();
+  const headerB64 = base64UrlEncode(JSON.stringify(header));
+  const payloadB64 = base64UrlEncode(JSON.stringify(payload));
+  const signInput = `${headerB64}.${payloadB64}`;
 
-    return res.status(200).json({
-      token,
-      url: livekitUrl,
-    });
-  } catch (err) {
-    console.error('Failed generating token:', err);
-    return res.status(500).json({ error: err.message });
-  }
+  const signature = crypto
+    .createHmac('sha256', apiSecret)
+    .update(signInput)
+    .digest('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+
+  const token = `${signInput}.${signature}`;
+
+  return res.status(200).json({
+    token,
+    url: livekitUrl
+  });
 };
