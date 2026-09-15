@@ -8,25 +8,35 @@ function base64UrlEncode(str) {
     .replace(/\//g, '_');
 }
 
+function sendResponse(res, statusCode, data) {
+  if (typeof res.status === 'function' && typeof res.json === 'function') {
+    return res.status(statusCode).json(data);
+  }
+  res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+  return res.end(JSON.stringify(data));
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    if (typeof res.status === 'function') return res.status(200).end();
+    res.writeHead(200);
+    return res.end();
   }
 
-  const apiKey = process.env.LIVEKIT_API_KEY;
-  const apiSecret = process.env.LIVEKIT_API_SECRET;
-  const livekitUrl = process.env.LIVEKIT_URL;
+  const apiKey = process.env.LIVEKIT_API_KEY || "APIog2ZEydoX7Aw";
+  const apiSecret = process.env.LIVEKIT_API_SECRET || "9U3CmxVTSAHeogAlFUtNNBVYfyaf8N8SiTKrfEuRNePE";
+  const livekitUrl = process.env.LIVEKIT_URL || "wss://open-voice-agent-mbfh49s1.livekit.cloud";
 
   if (!apiKey || !apiSecret) {
-    return res.status(500).json({ error: 'LIVEKIT_API_KEY or LIVEKIT_API_SECRET missing in Vercel settings.' });
+    return sendResponse(res, 500, { error: 'LIVEKIT_API_KEY or LIVEKIT_API_SECRET missing.' });
   }
 
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'HS256', typ: 'JWT' };
-  
+
   const payload = {
     sub: `user-${Math.random().toString(36).substring(7)}`,
     iss: apiKey,
@@ -54,7 +64,7 @@ module.exports = async (req, res) => {
 
   const token = `${signInput}.${signature}`;
 
-  return res.status(200).json({
+  return sendResponse(res, 200, {
     token,
     url: livekitUrl
   });
