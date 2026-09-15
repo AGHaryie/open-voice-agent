@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Voice Agent</title>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 1.5rem;
+    }
+    .container { text-align: center; width: 100%; max-width: 360px; }
+    button {
+      width: 100%;
+      padding: 18px;
+      font-size: 1.2rem;
+      border-radius: 9999px;
+      border: none;
+      background: #38bdf8;
+      font-weight: 700;
+      cursor: pointer;
+      color: #0f172a;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+    #status { margin-top: 24px; color: #94a3b8; font-size: 1rem; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button id="callBtn">Tap to Start Call</button>
+    <div id="status">Ready</div>
+  </div>
+
+  <audio id="remoteAudio" autoplay playsinline></audio>
+
+  <script>
+    const callBtn = document.getElementById("callBtn");
+    const statusDiv = document.getElementById("status");
+    const remoteAudio = document.getElementById("remoteAudio");
+
+    callBtn.onclick = async () => {
+      callBtn.disabled = true;
+
+      // Unlock mobile audio cleanly using a silent Web Audio context
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+          const ctx = new AudioContext();
+          await ctx.resume();
+        }
+      } catch (e) {
+        console.warn("AudioContext resume failed:", e);
+      }
+
+      statusDiv.innerText = "Requesting token...";
+      try {
+        const res = await fetch("/token");
+        if (!res.ok) throw new Error("Token request failed (" + res.status + ")");
+        const { token, url } = await res.json();
+
+        statusDiv.innerText = "Connecting to LiveKit Cloud...";
+        const room = new LivekitClient.Room({
+          adaptiveStream: true,
+          dynacast: true,
+          audioCaptureDefaults: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+
+        room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
+          if (track.kind === LivekitClient.Track.Kind.Audio) {
+            track.attach(remoteAudio);
+          }
+        });
+
+        await room.connect(url, token);
+
+        statusDiv.innerText = "Enabling microphone...";
+        await room.localParticipant.setMicrophoneEnabled(true);
+
+        statusDiv.innerText = "Connected! Speak to the agent.";
+        callBtn.innerText = "Call Active";
+      } catch (err) {
+        console.error("Connection error:", err);
+        statusDiv.innerText = "Error: " + (err.message || err);
+        callBtn.disabled = false;
+        callBtn.innerText = "Tap to Retry";
+      }
+    };
+  </script>
+</body>
+</html>
